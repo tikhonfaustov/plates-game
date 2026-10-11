@@ -7,6 +7,18 @@ const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 const port = process.env.PORT || 5173;
 http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
+  // Сохранение картинок из tools/make-assets.html в папку promo/ (только PNG с простым именем).
+  const save = url.match(/^\/save\/([\w-]+\.png)$/);
+  if (req.method === 'POST' && save) {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      fs.mkdirSync(path.join(root, 'promo'), { recursive: true });
+      fs.writeFileSync(path.join(root, 'promo', save[1]), Buffer.concat(chunks));
+      res.writeHead(200); res.end('ok');
+    });
+    return;
+  }
   const file = path.join(root, url === '/' ? 'index.html' : url);
   if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
   fs.readFile(file, (err, data) => {

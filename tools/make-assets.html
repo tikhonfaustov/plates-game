@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Картинки для бота</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@500&family=Manrope:wght@600;800&display=swap" rel="stylesheet">
+  <style>
+    body { background: #222; color: #eee; font: 14px Manrope, sans-serif; padding: 16px; }
+    canvas { display: block; margin: 10px 0 24px; max-width: 100%; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <!-- Открыть через node tools/serve.js: http://localhost:5173/tools/make-assets.html
+       Картинки сохраняются в promo/: bot-avatar.png (640×640) и app-banner.png (640×360). -->
+  <div id="status">Рисую…</div>
+  <canvas id="avatar" width="640" height="640"></canvas>
+  <canvas id="banner" width="640" height="360"></canvas>
+<script>
+const R = { common: '#a4abbd', uncommon: '#3ddc84', rare: '#3d8bff', epic: '#b05cff', legendary: '#ffb627' };
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+}
+
+// Номерной знак. kind: 'c' гражданский, 't' такси, 'p' полиция.
+function drawPlate(ctx, cx, cy, w, angle, p, kind = 'c') {
+  const h = w * 0.222;
+  ctx.save();
+  ctx.translate(cx, cy); ctx.rotate(angle);
+  const bg = { c: ['#ffffff', '#f3f4f1', '#dfe1dc'], t: ['#ffd84a', '#f2bf12', '#d8a50a'], p: ['#2f68c4', '#1c4f9e', '#133d7d'] }[kind];
+  const ink = kind === 'p' ? '#ffffff' : '#141414';
+  ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = w * 0.07; ctx.shadowOffsetY = w * 0.025;
+  const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+  g.addColorStop(0, bg[0]); g.addColorStop(0.4, bg[1]); g.addColorStop(1, bg[2]);
+  roundRect(ctx, -w / 2, -h / 2, w, h, w * 0.03); ctx.fillStyle = g; ctx.fill();
+  ctx.shadowColor = 'transparent';
+  ctx.lineWidth = 1.5; ctx.strokeStyle = 'rgba(0,0,0,.35)'; ctx.stroke();
+
+  const ins = w * 0.011, bw = w * 0.009;
+  const ix = -w / 2 + ins + bw / 2, iy = -h / 2 + ins + bw / 2, iw = w - 2 * ins - bw, ih = h - 2 * ins - bw;
+  roundRect(ctx, ix, iy, iw, ih, w * 0.02);
+  ctx.lineWidth = bw; ctx.strokeStyle = kind === 'p' ? '#0b2a5a' : '#161616'; ctx.stroke();
+  const sep = ix + iw * 0.74;
+  ctx.beginPath(); ctx.moveTo(sep, iy); ctx.lineTo(sep, iy + ih); ctx.lineWidth = w * 0.007; ctx.strokeStyle = ink; ctx.stroke();
+
+  // основная часть
+  const L = w * 0.135, Dg = w * 0.176, gap = w * 0.012;
+  const parts = kind === 'c' ? [[p.l[0], L], [p.d, Dg], [p.l.slice(1), L]] : [[p.l, L], [p.d, Dg]];
+  ctx.textBaseline = 'alphabetic';
+  let total = 0;
+  for (const [t, s] of parts) { ctx.font = `500 ${s}px "Roboto Condensed"`; total += ctx.measureText(t).width; }
+  total += gap * (parts.length - 1);
+  let x = (ix + sep) / 2 - total / 2;
+  const base = Dg * 0.37;
+  for (const [t, s] of parts) {
+    ctx.font = `500 ${s}px "Roboto Condensed"`;
+    ctx.fillStyle = kind === 'p' ? 'rgba(0,0,0,.4)' : 'rgba(255,255,255,.8)';
+    ctx.fillText(t, x, base + w * 0.003);
+    ctx.fillStyle = ink; ctx.fillText(t, x, base);
+    x += ctx.measureText(t).width + gap;
+  }
+  // регион
+  const rc = (sep + ix + iw) / 2;
+  ctx.textAlign = 'center';
+  ctx.font = `500 ${p.r.length > 2 ? w * 0.1 : w * 0.12}px "Roboto Condensed"`;
+  ctx.fillStyle = ink; ctx.fillText(p.r, rc, -h * 0.02);
+  ctx.font = `500 ${w * 0.042}px "Roboto Condensed"`;
+  const rusY = h * 0.3;
+  if (kind === 'c') {
+    ctx.fillText('RUS', rc - w * 0.03, rusY);
+    const fx = rc + w * 0.002, fy = rusY - w * 0.032, fw = w * 0.055, fh = w * 0.034;
+    ['#ffffff', '#1c57c7', '#d52b1e'].forEach((c, i) => { ctx.fillStyle = c; ctx.fillRect(fx, fy + i * fh / 3, fw, fh / 3); });
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 1; ctx.strokeRect(fx, fy, fw, fh);
+  } else ctx.fillText('RUS', rc, rusY);
+  ctx.textAlign = 'left';
+
+  // винты
+  for (const sx of [-w / 2 + w * 0.041, w / 2 - w * 0.041]) {
+    const sg = ctx.createRadialGradient(sx - w * 0.004, -w * 0.004, 1, sx, 0, w * 0.013);
+    sg.addColorStop(0, '#fdfdfd'); sg.addColorStop(0.55, '#9a9c98'); sg.addColorStop(1, '#5d5f5b');
+    ctx.beginPath(); ctx.arc(sx, 0, w * 0.013, 0, Math.PI * 2); ctx.fillStyle = sg; ctx.fill();
+  }
+  // блик
+  const gl = ctx.createLinearGradient(-w / 2, -h / 2, -w / 2 + w * 0.3, h);
+  gl.addColorStop(0, 'rgba(255,255,255,.35)'); gl.addColorStop(0.45, 'rgba(255,255,255,0)');
+  roundRect(ctx, -w / 2, -h / 2, w, h, w * 0.03); ctx.fillStyle = gl; ctx.fill();
+  ctx.restore();
+}
+
+function background(ctx, W, H, cx, cy) {
+  const bg = ctx.createRadialGradient(cx, cy, 10, cx, cy, Math.max(W, H) * 0.8);
+  bg.addColorStop(0, '#2b46b8'); bg.addColorStop(0.45, '#151d4a'); bg.addColorStop(1, '#080b14');
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, W, H);
+}
+
+function rays(ctx, cx, cy, radius, color, n = 18) {
+  ctx.save();
+  ctx.translate(cx, cy);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
+  g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g;
+  for (let i = 0; i < n; i++) {
+    const a = (i / n) * Math.PI * 2;
+    ctx.beginPath(); ctx.moveTo(0, 0);
+    ctx.arc(0, 0, radius, a, a + (Math.PI * 2 / n) * 0.42); ctx.closePath(); ctx.fill();
+  }
+  ctx.restore();
+}
+
+function glow(ctx, cx, cy, r, color) {
+  const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
+}
+
+function sparkle(ctx, x, y, s, color) {
+  ctx.save(); ctx.translate(x, y); ctx.fillStyle = color;
+  ctx.shadowColor = color; ctx.shadowBlur = s * 2;
+  ctx.beginPath();
+  ctx.moveTo(0, -s); ctx.quadraticCurveTo(0, 0, s, 0); ctx.quadraticCurveTo(0, 0, 0, s);
+  ctx.quadraticCurveTo(0, 0, -s, 0); ctx.quadraticCurveTo(0, 0, 0, -s); ctx.fill();
+  ctx.restore();
+}
+
+function title(ctx, text, x, y, size, align = 'center') {
+  ctx.save();
+  ctx.font = `800 ${size}px Manrope`; ctx.textAlign = align; ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(80,120,255,.9)'; ctx.shadowBlur = size * 0.5;
+  const g = ctx.createLinearGradient(0, y - size / 2, 0, y + size / 2);
+  g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#c9d6ff');
+  ctx.fillStyle = g; ctx.fillText(text, x, y);
+  ctx.restore();
+}
+
+function drawAvatar() {
+  const c = document.getElementById('avatar'), ctx = c.getContext('2d');
+  background(ctx, 640, 640, 320, 320);
+  rays(ctx, 320, 320, 420, 'rgba(255,190,60,.30)', 20);
+  glow(ctx, 320, 320, 260, 'rgba(255,182,39,.35)');
+  title(ctx, 'ГЕНЕРАТОР', 320, 168, 66);
+  title(ctx, 'НОМЕРОВ', 320, 478, 66);
+  drawPlate(ctx, 320, 322, 560, -0.06, { l: 'ААА', d: '777', r: '777' });
+  sparkle(ctx, 92, 250, 16, '#ffd36b'); sparkle(ctx, 560, 400, 20, '#ffffff');
+  sparkle(ctx, 540, 230, 10, '#ffd36b'); sparkle(ctx, 120, 420, 11, '#ffffff');
+}
+
+function drawBanner() {
+  const c = document.getElementById('banner'), ctx = c.getContext('2d');
+  background(ctx, 640, 360, 470, 200);
+  rays(ctx, 470, 210, 380, 'rgba(255,190,60,.22)', 22);
+  glow(ctx, 470, 210, 200, 'rgba(255,182,39,.3)');
+  drawPlate(ctx, 470, 112, 290, 0.10, { l: 'АВ', d: '777', r: '77' }, 't');
+  drawPlate(ctx, 470, 300, 290, -0.08, { l: 'А', d: '0001', r: '77' }, 'p');
+  drawPlate(ctx, 440, 205, 360, -0.03, { l: 'ААА', d: '777', r: '777' });
+  title(ctx, 'Генератор', 30, 70, 44, 'left');
+  title(ctx, 'номеров', 30, 118, 44, 'left');
+  ctx.font = '600 17px Manrope'; ctx.fillStyle = '#c3cbe6'; ctx.textBaseline = 'middle';
+  ['Крути номера за ₽', 'Лови блатные серии', 'Собирай коллекцию'].forEach((t, i) => {
+    ctx.fillStyle = '#ffb627'; ctx.beginPath(); ctx.arc(38, 172 + i * 30, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#c3cbe6'; ctx.fillText(t, 52, 172 + i * 30);
+  });
+  // полоски редкостей
+  Object.values(R).forEach((col, i) => {
+    roundRect(ctx, 30 + i * 34, 282, 28, 7, 3.5); ctx.fillStyle = col;
+    ctx.shadowColor = col; ctx.shadowBlur = 8; ctx.fill(); ctx.shadowBlur = 0;
+  });
+  ctx.font = '600 13px Manrope'; ctx.fillStyle = '#8790a8'; ctx.fillText('5 редкостей · Россия и Беларусь', 30, 312);
+  sparkle(ctx, 610, 60, 12, '#ffd36b'); sparkle(ctx, 300, 330, 9, '#ffffff');
+}
+
+async function upload(id, name) {
+  const blob = await new Promise((r) => document.getElementById(id).toBlob(r, 'image/png'));
+  const res = await fetch('/save/' + name, { method: 'POST', body: blob });
+  return res.ok;
+}
+
+(async () => {
+  // Второй аргумент — образец текста: без кириллицы браузер грузит только латинскую часть шрифта.
+  const sample = 'АВЕКМНОРСТУХ ГЕНЕРАТОР номеров Крути ₽ RUS 0123456789';
+  await Promise.all([
+    document.fonts.load('500 40px "Roboto Condensed"', sample),
+    document.fonts.load('800 40px Manrope', sample),
+    document.fonts.load('600 40px Manrope', sample),
+  ]);
+  drawAvatar();
+  drawBanner();
+  const ok = (await upload('avatar', 'bot-avatar.png')) && (await upload('banner', 'app-banner.png'));
+  document.getElementById('status').textContent = ok ? 'Готово: promo/bot-avatar.png и promo/app-banner.png' : 'Ошибка сохранения';
+  document.title = ok ? 'done' : 'error';
+})();
+</script>
+</body>
+</html>

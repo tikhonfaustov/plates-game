@@ -19,6 +19,7 @@
     get() {
       return new Promise((resolve) => {
         if (!cloud.ok()) return resolve(null);
+        setTimeout(() => resolve(null), 3000); // облако не ответило — играем с локальным сохранением
         cs().getItem(SAVE_KEY + '_n', (err, n) => {
           n = parseInt(n, 10);
           if (err || !n) return resolve(null);
