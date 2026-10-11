@@ -49,6 +49,14 @@
       tg.ready();
       tg.expand();
       if (can('7.7') && tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+      // Полный экран без шапки Telegram — только на телефонах (на компьютере он растянул бы окно на весь монитор).
+      const mobile = ['android', 'ios'].includes(tg.platform);
+      if (mobile && can('8.0') && tg.requestFullscreen && !tg.isFullscreen) {
+        try { tg.requestFullscreen(); } catch (e) { /* старый клиент — останемся в обычном режиме */ }
+      }
+      if (mobile && can('8.0') && tg.lockOrientation) {
+        try { tg.lockOrientation(); } catch (e) { /* не страшно */ }
+      }
       if (can('6.1')) tg.BackButton.onClick(() => backHandler && backHandler());
     },
 

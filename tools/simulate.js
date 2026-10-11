@@ -10,9 +10,11 @@ for (const [code, want] of checks) {
 }
 
 const N = 300000;
+const LUCK = 0.5; // как в js/game.js
+const roll = (kind) => { let e = P.evaluate(P.random(kind)); if (Math.random() < LUCK) { const e2 = P.evaluate(P.random(kind)); if (e2.score > e.score) e = e2; } return e; };
 for (const kind of Object.keys(P.KINDS)) {
   const cnt = [0, 0, 0, 0, 0]; let sum = 0;
-  for (let i = 0; i < N; i++) { const e = P.evaluate(P.random(kind)); cnt[P.RARITY_IDX[e.rarity.id]]++; sum += e.price; }
+  for (let i = 0; i < N; i++) { const e = roll(kind); cnt[P.RARITY_IDX[e.rarity.id]]++; sum += e.price; }
   console.log(kind, cnt.map((c) => (100 * c / N).toFixed(2) + '%').join('  '), ' средняя цена', Math.round(sum / N));
 }
 console.log("оригинал: c 53.79 37.86 8.05 0.28 0.02 | t 65.20 29.71 4.60 0.46 0.03 | p 53.51 39.00 7.13 0.33 0.03 | m 49.06 42.96 7.72 0.25 0.01");

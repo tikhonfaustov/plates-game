@@ -522,3 +522,10 @@ button { border: 0; background: none; cursor: pointer; padding: 0; }
 /* окно подтверждения поверх остальных окон */
 .confirm-bg { z-index: 30; }
 .confirm-bg .modal { width: min(340px, 100%); }
+
+/* ================= безопасные отступы в полноэкранном Telegram =================
+   Telegram сам задаёт эти переменные: системная строка телефона + его кнопки «Закрыть» и «⋯». */
+:root { --safe-top: calc(var(--tg-safe-area-inset-top, 0px) + var(--tg-content-safe-area-inset-top, 0px)); }
+.gen-top { padding-top: calc(12px + var(--safe-top)); }
+.head { padding-top: calc(14px + var(--safe-top)); }
+.float-cost { top: calc(58px + var(--safe-top)); }

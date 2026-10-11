@@ -4,6 +4,7 @@
 
   const START_MONEY = 50000;
   const ROLL_BASE = 3000;
+  const LUCK = 0.5; // шанс второй попытки при прокруте (поднимает шансы редких номеров)
   const REGION_GUARANTEE = 1.5; // наценка за выбор конкретного региона
 
   // Автопродажа: уровни покупаются по порядку за $.
@@ -179,6 +180,17 @@
     levelNeed() { return 200 * this.s.level; },
     themeUnlocked(th) { return !th.ok || th.ok(this.s); },
 
+    // Защита от тупика: денег не хватает, а вся коллекция стоит меньше прокрута — крутим бесплатно.
+    canFreeRoll() {
+      const cost = this.rollCost();
+      return this.s.money < cost && this.s.money + this.collValue() < cost;
+    },
+    // Продать все обычные номера из коллекции (сейф не трогаем).
+    sellCommons() {
+      const ids = this.s.coll.filter((x) => this.ev(x.c).rarity.id === 'common').map((x) => x.id);
+      return this.sellMany(ids);
+    },
+
     // ---------- прокрут ----------
     roll() {
       const cost = this.rollCost();
@@ -191,18 +203,25 @@
           this.sell(x.id, { auto: true });
         }
       }
-      if (this.s.money < cost) return { ok: false, reason: 'money', autoSold };
+      const free = this.canFreeRoll();
+      if (this.s.money < cost && !free) return { ok: false, reason: 'money', autoSold };
       if (this.collFull() && this.autoCan('full')) {
         const x = this.autoPick();
         if (x) { autoSold.push(x.c); this.sell(x.id, { auto: true }); }
       }
       if (this.collFull()) return { ok: false, reason: 'full', autoSold };
 
-      this.s.money -= cost;
+      if (!free) this.s.money -= cost;
       const shares = this.kindShares();
       let r = Math.random() * 100, kind = Object.keys(shares)[0];
       for (const [k, sh] of Object.entries(shares)) { if ((r -= sh) < 0) { kind = k; break; } }
-      const code = P.encode(P.random(kind, this.region()));
+      // Удача: с шансом LUCK делаем вторую попытку и оставляем номер получше.
+      let p = P.random(kind, this.region());
+      if (Math.random() < LUCK) {
+        const p2 = P.random(kind, this.region());
+        if (P.evaluate(p2).score > P.evaluate(p).score) p = p2;
+      }
+      const code = P.encode(p);
       const e = this.ev(code);
       const it = item(code);
       this.s.coll.push(it);

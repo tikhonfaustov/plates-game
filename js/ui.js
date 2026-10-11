@@ -90,10 +90,13 @@
 
   // ---------- главный экран (генератор) ----------
   function warnNotes() {
-    const notes = [];
-    if (G.s.money < G.rollCost()) notes.push('Не хватает денег на прокрут');
-    else if (G.collFull()) notes.push('Коллекция заполнена');
-    return notes.map((t) => `<div class="note">${IC.warn} ${t} <button class="btn btn-red" data-act="go" data-to="coll">Открыть</button></div>`).join('');
+    if (G.collFull()) return `<div class="note">${IC.warn} Коллекция заполнена <button class="btn btn-red" data-act="go" data-to="coll">Открыть</button></div>`;
+    if (G.s.money >= G.rollCost()) return '';
+    if (G.canFreeRoll()) return `<div class="note">🎁 Деньги кончились — следующий прокрут бесплатный</div>`;
+    const hasCommons = G.s.coll.some((x) => G.ev(x.c).rarity.id === 'common');
+    return `<div class="note">${IC.warn} Не хватает денег на прокрут ${hasCommons
+      ? '<button class="btn btn-red" data-act="sellcommon">Продать обычные</button>'
+      : '<button class="btn btn-red" data-act="go" data-to="coll">Коллекция</button>'}</div>`;
   }
   function addInfo(title, sub) {
     const id = Math.random();
@@ -169,7 +172,7 @@
   }
 
   function doRoll(x, y) {
-    const cost = G.rollCost();
+    const cost = G.canFreeRoll() ? 0 : G.rollCost();
     const res = G.roll();
     if (res.autoSold.length && G.s.set.showSold) toast(`Автопродажа: продано ${res.autoSold.length} шт.`);
     if (!res.ok) {
@@ -178,7 +181,7 @@
       return;
     }
     if (x != null) ripple(x, y);
-    floatCost(cost);
+    if (cost) floatCost(cost);
     ui.last = res;
     for (const o of res.opened) addInfo('Открыто новое', o);
     if (res.levelUp) addInfo(`Уровень ${res.levelUp.level}!`, `Награда: ${usd(res.levelUp.usd)}`);
@@ -726,6 +729,12 @@
       if (ui.sel.size) ui.sel.clear();
       else for (const x of G.filter(G.s.coll, ui.filter)) ui.sel.add(x.id);
       render();
+    },
+    sellcommon() {
+      const { count, total } = G.sellCommons();
+      haptic('success'); beep(880, 0.08);
+      toast(`Продано ${count} шт. за ${rub(total)}`);
+      updateGen(); save();
     },
     selsafe() {
       let moved = 0;
